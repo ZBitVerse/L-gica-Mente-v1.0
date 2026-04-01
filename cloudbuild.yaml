@@ -1,0 +1,69 @@
+# ── cloudbuild.yaml — Puente Lógico SAS BIC ───────────────────────────────
+#
+# Pipeline de CI/CD con Google Cloud Build.
+# Se activa automáticamente con cada push a la rama 'main' en GitHub.
+#
+# Flujo:
+#   1. Construye la imagen Docker
+#   2. La sube a Artifact Registry
+#   3. Despliega la nueva versión en Cloud Run (sin tiempo de inactividad)
+
+substitutions:
+  _REGION: us-central1                          # Región de Cloud Run
+  _SERVICE: puente-logico-app                   # Nombre del servicio en Cloud Run
+  _REPO: puente-logico-repo                     # Repositorio en Artifact Registry
+  _IMAGE: us-central1-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}
+
+steps:
+  # ── PASO 1: Construir la imagen Docker ──────────────────────────────────
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-image'
+    args:
+      - 'build'
+      - '-t'
+      - '${_IMAGE}:${SHORT_SHA}'   # Tag con el hash del commit (trazabilidad)
+      - '-t'
+      - '${_IMAGE}:latest'         # Tag latest para Cloud Run
+      - '-f'
+      - 'dockerfile'
+      - '.'
+
+  # ── PASO 2: Subir imagen a Artifact Registry ────────────────────────────
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-image'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_IMAGE}'
+    waitFor: ['build-image']
+
+  # ── PASO 3: Desplegar en Cloud Run ──────────────────────────────────────
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-cloudrun'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE}'
+      - '--image=${_IMAGE}:${SHORT_SHA}'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated'        # App pública (estudiantes no necesitan login de Google)
+      - '--memory=512Mi'                 # Suficiente para SymPy + Pandas + Plotly
+      - '--cpu=1'
+      - '--min-instances=0'              # Escala a cero cuando no hay usuarios (ahorra costo)
+      - '--max-instances=10'             # Máximo 10 instancias simultáneas
+      - '--timeout=300'                  # 5 min timeout (Streamlit mantiene conexión abierta)
+      - '--port=8080'
+      - '--set-env-vars=PYTHONUNBUFFERED=1'
+    waitFor: ['push-image']
+
+# Imagen final que queda registrada en el historial de Cloud Build
+images:
+  - '${_IMAGE}:${SHORT_SHA}'
+  - '${_IMAGE}:latest'
+
+# Opciones globales del pipeline
+options:
+  logging: CLOUD_LOGGING_ONLY   # Logs en Cloud Logging (no en Storage)
+  machineType: 'E2_MEDIUM'      # Máquina de build (más rápida que la default)

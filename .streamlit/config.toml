@@ -1,0 +1,18 @@
+# .streamlit/config.toml — Puente Lógico SAS BIC
+# Configuración de Streamlit para producción en Cloud Run
+
+[server]
+headless = true
+enableCORS = false
+enableXsrfProtection = false
+
+[browser]
+# Desactiva el reporte de estadísticas de uso a Streamlit
+gatherUsageStats = false
+
+[theme]
+primaryColor = "#1B4F72"
+backgroundColor = "#ECF0F1"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#2C3E50"
+font = "sans serif"
