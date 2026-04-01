@@ -1,18 +1,7 @@
 # ── cloudbuild.yaml — Puente Lógico SAS BIC ───────────────────────────────
-#
-# Pipeline de CI/CD con Google Cloud Build.
-# Se activa automáticamente con cada push a la rama 'main' en GitHub.
-#
-# Flujo:
-#   1. Construye la imagen Docker
-#   2. La sube a Artifact Registry
-#   3. Despliega la nueva versión en Cloud Run (sin tiempo de inactividad)
-
-substitutions:
-  _REGION: us-central1                          # Región de Cloud Run
-  _SERVICE: puente-logico-app                   # Nombre del servicio en Cloud Run
-  _REPO: puente-logico-repo                     # Repositorio en Artifact Registry
-  _IMAGE: us-central1-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}
+# Pipeline CI/CD: build → push → deploy en Cloud Run
+# Se activa con cada push a la rama 'main' en GitHub
+# También puede ejecutarse manualmente con: gcloud builds submit
 
 steps:
   # ── PASO 1: Construir la imagen Docker ──────────────────────────────────
@@ -21,9 +10,7 @@ steps:
     args:
       - 'build'
       - '-t'
-      - '${_IMAGE}:${SHORT_SHA}'   # Tag con el hash del commit (trazabilidad)
-      - '-t'
-      - '${_IMAGE}:latest'         # Tag latest para Cloud Run
+      - 'us-central1-docker.pkg.dev/puente-logico-sas-bic/puente-logico-repo/puente-logico-app:latest'
       - '-f'
       - 'dockerfile'
       - '.'
@@ -33,8 +20,7 @@ steps:
     id: 'push-image'
     args:
       - 'push'
-      - '--all-tags'
-      - '${_IMAGE}'
+      - 'us-central1-docker.pkg.dev/puente-logico-sas-bic/puente-logico-repo/puente-logico-app:latest'
     waitFor: ['build-image']
 
   # ── PASO 3: Desplegar en Cloud Run ──────────────────────────────────────
@@ -44,26 +30,23 @@ steps:
     args:
       - 'run'
       - 'deploy'
-      - '${_SERVICE}'
-      - '--image=${_IMAGE}:${SHORT_SHA}'
-      - '--region=${_REGION}'
+      - 'puente-logico-app'
+      - '--image=us-central1-docker.pkg.dev/puente-logico-sas-bic/puente-logico-repo/puente-logico-app:latest'
+      - '--region=us-central1'
       - '--platform=managed'
-      - '--allow-unauthenticated'        # App pública (estudiantes no necesitan login de Google)
-      - '--memory=512Mi'                 # Suficiente para SymPy + Pandas + Plotly
+      - '--allow-unauthenticated'
+      - '--memory=512Mi'
       - '--cpu=1'
-      - '--min-instances=0'              # Escala a cero cuando no hay usuarios (ahorra costo)
-      - '--max-instances=10'             # Máximo 10 instancias simultáneas
-      - '--timeout=300'                  # 5 min timeout (Streamlit mantiene conexión abierta)
+      - '--min-instances=0'
+      - '--max-instances=10'
+      - '--timeout=300'
       - '--port=8080'
       - '--set-env-vars=PYTHONUNBUFFERED=1'
     waitFor: ['push-image']
 
-# Imagen final que queda registrada en el historial de Cloud Build
 images:
-  - '${_IMAGE}:${SHORT_SHA}'
-  - '${_IMAGE}:latest'
+  - 'us-central1-docker.pkg.dev/puente-logico-sas-bic/puente-logico-repo/puente-logico-app:latest'
 
-# Opciones globales del pipeline
 options:
-  logging: CLOUD_LOGGING_ONLY   # Logs en Cloud Logging (no en Storage)
-  machineType: 'E2_MEDIUM'      # Máquina de build (más rápida que la default)
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_MEDIUM'
