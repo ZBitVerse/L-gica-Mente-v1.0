@@ -7,10 +7,11 @@ Ejecutar con:  streamlit run main.py
 
 import streamlit as st
 import time
+import logging
 
 from config import (
     NOMBRE_APP, COLORES, CASOS_FACTORIZACION,
-    NIVELES_JUGADOR, PUNTOS_BONUS, GRADOS_COLOMBIA,
+    NIVELES_JUGADOR, PUNTOS_BONUS, GRADOS_COLOMBIA, VERSION,
     GRADO_INICIO_RECOMENDADO,
 )
 from generador_algebra import (
@@ -21,6 +22,8 @@ from estudiantes import (
     crear_o_recuperar_estudiante, iniciar_sesion, 
     guardar_respuesta, cerrar_sesion, Respuesta
 )
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # CONFIGURACIÓN DE PÁGINA
@@ -41,17 +44,44 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
 
+:root {
+    --primary: #1B4F72;
+    --accent: #F39C12;
+    --success: #27AE60;
+    --error: #E74C3C;
+    --glass: rgba(255, 255, 255, 0.08);
+    --glass-border: rgba(255, 255, 255, 0.15);
+    --grad-dark: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+}
+
 /* ── Reset y base ── */
 html, body, .stApp {
     font-family: 'Nunito', sans-serif !important;
+    scroll-behavior: smooth; /* Desplazamiento suave */
 }
 
 .stApp {
-    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    background: var(--grad-dark);
     min-height: 100vh;
 }
 
-/* ── Ocultar elementos de Streamlit que no queremos ── */
+/* ── Animaciones de Entrada (Scroll Reveal) ── */
+.st-scroll-reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+.st-scroll-reveal.st-is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+/* Retrasos para elementos consecutivos */
+.st-scroll-reveal:nth-child(2) { transition-delay: 0.1s; }
+.st-scroll-reveal:nth-child(3) { transition-delay: 0.2s; }
+.st-scroll-reveal:nth-child(4) { transition-delay: 0.3s; }
+.st-scroll-reveal:nth-child(5) { transition-delay: 0.4s; }
+
+/* ── UI Elements ── */
 #MainMenu, footer, header { visibility: hidden; }
 .block-container { padding-top: 1.5rem !important; }
 
@@ -61,7 +91,7 @@ html, body, .stApp {
     padding: 40px 20px 20px;
 }
 .hero-logo {
-    font-size: 4rem;
+    font-size: 5rem;
     animation: float 3s ease-in-out infinite;
 }
 @keyframes float {
@@ -84,22 +114,28 @@ html, body, .stApp {
 
 /* ── Tarjeta glass ── */
 .glass {
-    background: rgba(255,255,255,0.08);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.15);
+    background: var(--glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px); /* Para compatibilidad con Safari */
+    border: 1px solid var(--glass-border);
     border-radius: 20px;
     padding: 28px;
     margin: 12px 0;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); /* Sombra más pronunciada */
+    transition: border 0.3s ease; /* Transición suave para el borde */
+}
+.glass:hover {
+    border: 1px solid rgba(243, 156, 18, 0.4); /* Borde dorado al pasar el mouse */
 }
 
 /* ── Tarjeta de caso en bienvenida ── */
 .caso-card {
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.03); /* Fondo más sutil */
+    border: 1px solid var(--glass-border);
     border-radius: 16px;
     padding: 20px 16px;
     text-align: center;
-    transition: transform 0.2s, background 0.2s;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Animación más elástica */
     height: 100%;
 }
 .caso-card:hover {
@@ -107,7 +143,7 @@ html, body, .stApp {
     transform: translateY(-4px);
 }
 .caso-card .emoji { font-size: 2.2rem; }
-.caso-card h4 { color: #F39C12; font-size: 0.95rem; margin: 8px 0 4px; }
+.caso-card h4 { color: var(--accent); font-size: 0.95rem; margin: 8px 0 4px; }
 .caso-card .formula {
     font-family: 'Courier New', monospace;
     color: rgba(255,255,255,0.6);
@@ -123,7 +159,7 @@ html, body, .stApp {
 /* ── Panel de jugador (header del juego) ── */
 .player-bar {
     background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.12);
+    border: 1px solid var(--glass-border);
     border-radius: 16px;
     padding: 14px 20px;
     display: flex;
@@ -131,7 +167,7 @@ html, body, .stApp {
     justify-content: space-between;
     margin-bottom: 16px;
 }
-.player-name { color: white; font-weight: 800; font-size: 1.05rem; }
+.player-name { color: white; font-weight: 800; font-size: 1.05rem; } /* Ya usa Nunito */
 .player-level { color: #F39C12; font-size: 0.85rem; font-weight: 600; }
 
 /* ── Barra de XP ── */
@@ -164,11 +200,11 @@ html, body, .stApp {
 
 /* ── Tarjeta del ejercicio ── */
 .ejercicio-card {
-    background: rgba(255,255,255,0.95);
+    background: rgba(255,255,255,0.98); /* Fondo casi blanco para contraste */
     border-radius: 24px;
     padding: 32px 28px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-    margin: 8px 0 20px;
+    box-shadow: 0 20px 80px rgba(0,0,0,0.5); /* Sombra más dramática */
+    margin: 15px 0 25px; /* Más espacio */
     text-align: center;
 }
 .ejercicio-badge {
@@ -190,7 +226,7 @@ html, body, .stApp {
 .ejercicio-expresion {
     font-size: 2.8rem;
     font-weight: 900;
-    color: #1B4F72;
+    color: var(--primary);
     font-family: 'Courier New', monospace;
     padding: 16px 8px;
     letter-spacing: 3px;
@@ -220,7 +256,7 @@ html, body, .stApp {
 }
 
 /* ── Puntos ── */
-.puntos-badge {
+/* .puntos-badge ya está bien */
     background: linear-gradient(135deg, #1B4F72, #2471a3);
     color: white;
     border-radius: 12px;
@@ -233,7 +269,7 @@ html, body, .stApp {
 
 /* ── Pistas ── */
 .pista-card {
-    background: rgba(243,156,18,0.12);
+    background: rgba(243,156,18,0.12); /* Color de acento */
     border: 1px solid rgba(243,156,18,0.3);
     border-radius: 14px;
     padding: 14px 16px;
@@ -246,7 +282,7 @@ html, body, .stApp {
 
 /* ── Resultado correcto ── */
 .resultado-correcto {
-    background: linear-gradient(135deg, #1a6b3a, #27ae60);
+    background: linear-gradient(135deg, var(--success), #2ecc71); /* Usar variable */
     border-radius: 18px;
     padding: 24px;
     text-align: center;
@@ -266,7 +302,7 @@ html, body, .stApp {
 
 /* ── Resultado incorrecto ── */
 .resultado-incorrecto {
-    background: linear-gradient(135deg, #7b1f1f, #c0392b);
+    background: linear-gradient(135deg, var(--error), #e74c3c); /* Usar variable */
     border-radius: 18px;
     padding: 20px 24px;
     color: white;
@@ -279,14 +315,14 @@ html, body, .stApp {
 /* ── Pasos de solución ── */
 .paso {
     background: rgba(255,255,255,0.06);
-    border-left: 4px solid #F39C12;
+    border-left: 4px solid var(--accent); /* Usar variable */
     border-radius: 0 12px 12px 0;
     padding: 12px 16px;
     margin: 6px 0;
     color: white;
 }
-.paso .num { color: #F39C12; font-weight: 800; }
-.paso .desc { font-size: 0.9rem; opacity: 0.9; }
+.paso .num { color: var(--accent); font-weight: 800; }
+.paso .desc { font-size: 0.9rem; opacity: 0.9; } /* Ya usa Nunito */
 .paso .expr {
     font-family: 'Courier New', monospace;
     background: rgba(0,0,0,0.3);
@@ -303,7 +339,7 @@ html, body, .stApp {
     text-align: center;
     padding: 20px;
 }
-.resultado-final .trofeo { font-size: 5rem; animation: float 2s ease-in-out infinite; }
+.resultado-final .trofeo { font-size: 5rem; animation: float 2s ease-in-out infinite; } /* Ya tiene animación */
 .resultado-final h1 { color: #F39C12; font-size: 2.5rem; font-weight: 900; margin: 8px 0; }
 .resultado-final p { color: rgba(255,255,255,0.8); font-size: 1.1rem; }
 
@@ -314,7 +350,7 @@ html, body, .stApp {
     padding: 20px;
     text-align: center;
 }
-.stat-card .valor { font-size: 2.4rem; font-weight: 900; color: #F39C12; }
+.stat-card .valor { font-size: 2.4rem; font-weight: 900; color: var(--accent); } /* Usar variable */
 .stat-card .etiqueta { color: rgba(255,255,255,0.6); font-size: 0.85rem; margin-top: 4px; }
 
 /* ── Inputs y botones ── */
@@ -327,7 +363,7 @@ html, body, .stApp {
     padding: 12px 16px !important;
     font-family: 'Courier New', monospace !important;
 }
-.stTextInput > div > div > input:focus {
+div.stTextInput > div > div > input:focus { /* Más específico */
     border-color: #F39C12 !important;
     box-shadow: 0 0 0 3px rgba(243,156,18,0.2) !important;
 }
@@ -339,7 +375,7 @@ div.stButton > button {
     font-size: 1rem !important;
     padding: 10px 20px !important;
     width: 100% !important;
-    transition: transform 0.1s, box-shadow 0.1s !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important; /* Transición más suave */
 }
 div.stButton > button:hover { transform: translateY(-2px) !important; }
 div.stButton > button[kind="primary"] {
@@ -361,7 +397,7 @@ div[data-baseweb="select"] > div {
     color: white !important;
 }
 
-/* Expander */
+/* Tabs y Expander */
 .streamlit-expanderHeader {
     background: rgba(255,255,255,0.06) !important;
     border-radius: 12px !important;
@@ -369,6 +405,20 @@ div[data-baseweb="select"] > div {
 }
 
 /* Sidebar */
+/* Custom Checkbox y Radio simulation */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 10px;
+    background-color: transparent;
+}
+.stTabs [data-baseweb="tab"] {
+    background-color: var(--glass);
+    border-radius: 10px 10px 0 0;
+    color: white;
+}
+.stTabs [aria-selected="true"] {
+    background-color: var(--accent) !important;
+    color: var(--primary) !important;
+}
 .css-1d391kg, [data-testid="stSidebar"] {
     background: rgba(15,32,39,0.95) !important;
 }
@@ -395,6 +445,32 @@ hr { border-color: rgba(255,255,255,0.1) !important; }
     font-weight: 800;
     color: #F39C12;
     margin-bottom: 20px;
+}
+
+/* Toast/Notificación flotante */
+.st-toast-container {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.st-toast {
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    margin-top: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    animation: fadeInOut 3s forwards;
+}
+@keyframes fadeInOut {
+    0%, 100% { opacity: 0; }
+    10%, 90% { opacity: 1; }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -532,13 +608,13 @@ def _procesar_respuesta(respuesta: str, problema):
 def pantalla_bienvenida():
     # ── HERO SECTION ─────────────────────────────────────────────────────
     st.markdown("""
-    <div class="hero">
+    <div class="hero st-scroll-reveal">
         <div class="hero-logo">🧮</div>
         <h1>Puente Lógico</h1>
         <p style="font-size: 1.4rem; color: #f7c948;">Transformando el miedo a las matemáticas en éxito escolar</p>
         <p style="max-width: 700px; margin: 20px auto; opacity: 0.8;">
             Una plataforma interactiva diseñada para reducir la deserción escolar en Colombia 
-            mediante el dominio de la factorización y el álgebra.
+            mediante el dominio del álgebra con tecnología de vanguardia.
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -546,7 +622,7 @@ def pantalla_bienvenida():
     # ── LOGIN / REGISTRO ────────────────────────────────────────────────
     _, col, _ = st.columns([1, 1.5, 1])
     with col:
-        st.markdown('<div class="glass">', unsafe_allow_html=True)
+        st.markdown('<div class="glass st-scroll-reveal" style="animation-delay: 0.2s">', unsafe_allow_html=True)
         tab1, tab2 = st.tabs(["🔑 Iniciar Sesión", "✨ Registrarse"])
         
         with tab1:
@@ -557,6 +633,7 @@ def pantalla_bienvenida():
                 from estudiantes import verificar_usuario
                 u = verificar_usuario(l_nombre, l_grado, l_pass)
                 if u:
+                    logger.info(f"Login exitoso: {u.nombre} (Rol: {u.rol})")
                     ses = iniciar_sesion(u.id)
                     st.session_state.nombre = u.nombre
                     st.session_state.estudiante_id = u.id
@@ -574,6 +651,7 @@ def pantalla_bienvenida():
                         _nuevo_problema()
                     st.rerun()
                 else:
+                    logger.warning(f"Intento de login fallido para: {l_nombre}")
                     st.error("Credenciales incorrectas")
 
         with tab2:
@@ -591,23 +669,23 @@ def pantalla_bienvenida():
 
     # ── SECCIÓN: EL PROBLEMA ─────────────────────────────────────────────
     st.markdown("""
-    <div class="landing-section" style="text-align:center;">
+    <div class="landing-section st-scroll-reveal" style="text-align:center; animation-delay: 0.4s">
         <h2 class="section-title">¿Por qué Puente Lógico?</h2>
         <div style="display:flex; justify-content:center; gap:30px; flex-wrap:wrap;">
-            <div class="glass" style="width:300px;">
+            <div class="glass st-scroll-reveal" style="width:300px; animation-delay:0.5s">
                 <h3>📉 5%</h3>
                 <p>Tasa de deserción escolar en secundaria en Colombia.</p>
             </div>
-            <div class="glass" style="width:300px;">
+            <div class="glass st-scroll-reveal" style="width:300px; animation-delay:0.6s">
                 <h3>✖️ Álgebra</h3>
-                <p>La principal barrera académica que causa frustración y abandono.</p>
+                <p>La principal barrera académica que causa abandono escolar.</p>
             </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
     # ── SECCIÓN: CARACTERÍSTICAS ─────────────────────────────────────────
-    st.markdown('<h2 class="section-title" style="text-align:center;">Nuestra Tecnología</h2>', unsafe_allow_html=True)
+    st.markdown('<h2 class="section-title st-scroll-reveal" style="text-align:center; animation-delay: 0.7s">Nuestra Tecnología</h2>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown("""
@@ -636,7 +714,7 @@ def pantalla_bienvenida():
 
     # Cards de casos
     st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown(
+    st.markdown( # No le pongo scroll-reveal a este texto para que aparezca con las cards
         '<p style="text-align:center; color:rgba(255,255,255,0.5); font-size:0.9rem; margin-bottom:12px;">'
         'LO QUE APRENDERÁS</p>',
         unsafe_allow_html=True,
@@ -645,7 +723,7 @@ def pantalla_bienvenida():
     cols = st.columns(4)
     casos = list(CASOS_FACTORIZACION.items())[:4]
     for i, (_, caso) in enumerate(casos):
-        with cols[i]:
+        with cols[i]: # Las cards individuales tendrán un delay para un efecto escalonado
             st.markdown(f"""
             <div class="caso-card">
                 <div class="emoji">{caso['emoji']}</div>
@@ -654,6 +732,24 @@ def pantalla_bienvenida():
                 <div class="ejemplo">Ej: {caso['ejemplo']}</div>
             </div>
             """, unsafe_allow_html=True)
+
+    # JavaScript para el Scroll Reveal
+    st.components.v1.html("""
+    <script>
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('st-is-visible');
+            } else {
+                // Opcional: remover la clase si sale de la vista para re-animar
+                // entry.target.classList.remove('st-is-visible');
+            }
+        });
+    }, { threshold: 0.1 }); // El 10% del elemento debe ser visible
+
+    document.querySelectorAll('.st-scroll-reveal').forEach(element => observer.observe(element));
+    </script>
+    """, height=0)
 
 
 # ---------------------------------------------------------------------------

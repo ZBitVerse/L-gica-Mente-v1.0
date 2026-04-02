@@ -14,7 +14,7 @@ sin tocar la lógica de negocio.
 # ---------------------------------------------------------------------------
 NOMBRE_APP = "Puente Lógico"
 SUBTITULO  = "Aprende matemáticas jugando — Colombia"
-VERSION    = "1.0.0"
+VERSION    = "1.1.0"
 
 # ---------------------------------------------------------------------------
 # CONTEXTO CURRICULAR COLOMBIANO

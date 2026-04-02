@@ -17,6 +17,7 @@ Tablas:
 
 import sqlite3
 import os
+import logging
 from datetime import datetime
 from dataclasses import dataclass, field
 from typing import Optional
@@ -24,6 +25,9 @@ from typing import Optional
 # ---------------------------------------------------------------------------
 # CONFIGURACIÓN DE LA BASE DE DATOS
 # ---------------------------------------------------------------------------
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # El archivo .db se guarda en la misma carpeta que este módulo
 DB_PATH = os.path.join(os.path.dirname(__file__), "puente_logico.db")
@@ -43,6 +47,7 @@ def inicializar_db():
     Se llama una vez al iniciar la aplicación (idempotente).
     """
     with _conectar() as conn:
+        logger.info(f"Verificando inicialización de DB en: {DB_PATH}")
         conn.executescript("""
         -- Tabla de estudiantes
         CREATE TABLE IF NOT EXISTS estudiantes (
@@ -73,6 +78,7 @@ def inicializar_db():
                 "INSERT INTO estudiantes (nombre, grado, rol, contrasena, creado_en) VALUES (?, ?, ?, ?, ?)",
                 ("Admin", 6, "profesor", "admin123", datetime.now().isoformat())
             )
+            logger.info("Usuario Admin creado por defecto.")
 
         conn.executescript("""
         -- Tabla de respuestas (cada pregunta respondida)
@@ -156,27 +162,32 @@ def crear_o_recuperar_estudiante(nombre: str, grado: int, contrasena: str = None
     Para el MVP, si no se envía contraseña, se asocia una por defecto.
     """
     with _conectar() as conn:
-        fila = conn.execute(
-            "SELECT * FROM estudiantes WHERE nombre = ? AND grado = ?",
-            (nombre, grado)
-        ).fetchone()
+        try:
+            fila = conn.execute(
+                "SELECT * FROM estudiantes WHERE nombre = ? AND grado = ?",
+                (nombre, grado)
+            ).fetchone()
 
-        if fila:
-            return Estudiante(
-                id=fila["id"],
-                nombre=fila["nombre"],
-                grado=fila["grado"],
-                rol=fila["rol"],
-                creado_en=fila["creado_en"],
-                ultima_vez=fila["ultima_vez"],
+            if fila:
+                return Estudiante(
+                    id=fila["id"],
+                    nombre=fila["nombre"],
+                    grado=fila["grado"],
+                    rol=fila["rol"],
+                    creado_en=fila["creado_en"],
+                    ultima_vez=fila["ultima_vez"],
+                )
+
+            # No existe -> crear
+            cursor = conn.execute(
+                "INSERT INTO estudiantes (nombre, grado, contrasena, creado_en) VALUES (?, ?, ?, ?)",
+                (nombre, grado, contrasena, datetime.now().isoformat())
             )
-
-        # No existe -> crear
-        cursor = conn.execute(
-            "INSERT INTO estudiantes (nombre, grado, contrasena, creado_en) VALUES (?, ?, ?, ?)",
-            (nombre, grado, contrasena, datetime.now().isoformat())
-        )
-        return Estudiante(id=cursor.lastrowid, nombre=nombre, grado=grado)
+            logger.info(f"Nuevo estudiante registrado: {nombre}")
+            return Estudiante(id=cursor.lastrowid, nombre=nombre, grado=grado)
+        except Exception as e:
+            logger.error(f"Error en crear_o_recuperar_estudiante: {e}")
+            raise
 
 
 def verificar_usuario(nombre: str, grado: int, contrasena: str):
