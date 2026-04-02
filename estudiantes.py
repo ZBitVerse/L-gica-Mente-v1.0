@@ -30,8 +30,9 @@ from typing import Optional
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# El archivo .db se guarda en la misma carpeta que este módulo
-DB_PATH = os.path.join(os.path.dirname(__file__), "puente_logico.db")
+# Usa el nombre de la DB desde el entorno o el valor por defecto
+DB_NAME = os.getenv("DB_NAME", "puente_logico.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), DB_NAME)
 
 
 def _conectar() -> sqlite3.Connection:

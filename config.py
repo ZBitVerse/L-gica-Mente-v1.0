@@ -9,6 +9,14 @@ Centralizar la configuración permite cambiar el comportamiento de la app
 sin tocar la lógica de negocio.
 """
 
+import os
+from dotenv import load_dotenv
+
+# Cargar variables desde archivo .env si existe (entorno DEV)
+load_dotenv()
+
+ENV = os.getenv("ENV", "DEV")  # Por defecto asume DEV si no hay variable
+
 # ---------------------------------------------------------------------------
 # IDENTIDAD DE LA EMPRESA
 # ---------------------------------------------------------------------------

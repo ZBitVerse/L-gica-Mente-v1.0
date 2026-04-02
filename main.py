@@ -633,19 +633,7 @@ def pantalla_bienvenida():
                 from estudiantes import verificar_usuario
                 u = verificar_usuario(l_nombre, l_grado, l_pass)
                 if u:
-                    logger.info(f"Login exitoso: {u.nombre} (Rol: {u.rol})")
-                    ses = iniciar_sesion(u.id)
-                    st.session_state.nombre = u.nombre
-                    st.session_state.estudiante_id = u.id
-                    st.session_state.sesion_id = ses.id
-                    st.session_state.grado = u.grado
-                    st.session_state.rol = u.rol
-                    st.session_state.autenticado = True
-                    
-                    if u.rol == "profesor":
-                        st.success("¡Bienvenido, Profesor! Redirigiendo...")
-                        time.sleep(1)
-                _login_usuario(u)
+                    _login_usuario(u)
                 else:
                     logger.warning(f"Intento de login fallido para: {l_nombre}")
                     st.error("Credenciales incorrectas")
