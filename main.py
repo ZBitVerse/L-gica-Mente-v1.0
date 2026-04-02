@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 st.set_page_config(
-    page_title="Puente Lógico",
+    page_title="Lógicamente",
     page_icon="🧮",
     layout="centered",
     initial_sidebar_state="collapsed",
@@ -99,7 +99,7 @@ html, body, .stApp {
     50%       { transform: translateY(-10px); }
 }
 .hero h1 {
-    font-size: 3rem;
+    font-size: 3.5rem;
     font-weight: 900;
     background: linear-gradient(90deg, #F39C12, #f7c948, #F39C12);
     -webkit-background-clip: text;
@@ -610,7 +610,7 @@ def pantalla_bienvenida():
     st.markdown("""
     <div class="hero st-scroll-reveal">
         <div class="hero-logo">🧮</div>
-        <h1>Puente Lógico</h1>
+        <h1>Lógicamente</h1>
         <p style="font-size: 1.4rem; color: #f7c948;">Transformando el miedo a las matemáticas en éxito escolar</p>
         <p style="max-width: 700px; margin: 20px auto; opacity: 0.8;">
             Una plataforma interactiva diseñada para reducir la deserción escolar en Colombia 

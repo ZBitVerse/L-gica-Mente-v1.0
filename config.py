@@ -12,7 +12,7 @@ sin tocar la lógica de negocio.
 # ---------------------------------------------------------------------------
 # IDENTIDAD DE LA EMPRESA
 # ---------------------------------------------------------------------------
-NOMBRE_APP = "Puente Lógico"
+NOMBRE_APP = "Lógicamente"
 SUBTITULO  = "Aprende matemáticas jugando — Colombia"
 VERSION    = "1.1.0"
 
