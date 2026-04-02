@@ -645,11 +645,7 @@ def pantalla_bienvenida():
                     if u.rol == "profesor":
                         st.success("¡Bienvenido, Profesor! Redirigiendo...")
                         time.sleep(1)
-                        st.switch_page("pages/01_profesor.py")
-                    else:
-                        st.session_state.pantalla = "juego"
-                        _nuevo_problema()
-                    st.rerun()
+                _login_usuario(u)
                 else:
                     logger.warning(f"Intento de login fallido para: {l_nombre}")
                     st.error("Credenciales incorrectas")
@@ -661,11 +657,28 @@ def pantalla_bienvenida():
             if st.button("Crear mi cuenta", use_container_width=True):
                 if r_nombre and r_pass:
                     u = crear_o_recuperar_estudiante(r_nombre, r_grado, r_pass)
-                    st.success("¡Cuenta creada! Ahora inicia sesión.")
+                    _login_usuario(u)
                 else:
                     st.warning("Completa todos los campos")
 
         st.markdown('</div>', unsafe_allow_html=True)
+
+def _login_usuario(u):
+    """Helper para centralizar la lógica de inicio de sesión."""
+    ses = iniciar_sesion(u.id)
+    st.session_state.nombre = u.nombre
+    st.session_state.estudiante_id = u.id
+    st.session_state.sesion_id = ses.id
+    st.session_state.grado = u.grado
+    st.session_state.rol = u.rol
+    st.session_state.autenticado = True
+    
+    if u.rol == "profesor":
+        st.switch_page("pages/01_profesor.py")
+    else:
+        st.session_state.pantalla = "juego"
+        _nuevo_problema()
+    st.rerun()
 
     # ── SECCIÓN: EL PROBLEMA ─────────────────────────────────────────────
     st.markdown("""
@@ -965,6 +978,8 @@ def pantalla_juego():
             st.metric("Precisión", f"{pct}%")
         st.metric("Racha máx.", st.session_state.racha_max)
         st.markdown("---")
+        if st.button("🚪 Cerrar Sesión"):
+            cerrar_sesion_ui()
         st.markdown("**Casos del juego:**")
         for _, cfg in CASOS_FACTORIZACION.items():
             st.markdown(f"{cfg['emoji']} {cfg['nombre']}")

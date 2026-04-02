@@ -18,6 +18,7 @@ Tablas:
 import sqlite3
 import os
 import logging
+import hashlib
 from datetime import datetime
 from dataclasses import dataclass, field
 from typing import Optional
@@ -39,6 +40,11 @@ def _conectar() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row   # Permite acceder a columnas por nombre
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+
+def _hashear_password(password: str) -> str:
+    """Convierte una contraseña en texto plano a un hash SHA-256."""
+    return hashlib.sha256(password.encode()).hexdigest()
 
 
 def inicializar_db():
@@ -74,9 +80,10 @@ def inicializar_db():
         # Crear un profesor por defecto si la base de datos está vacía
         count = conn.execute("SELECT COUNT(*) FROM estudiantes").fetchone()[0]
         if count == 0:
+            pass_admin = _hashear_password("admin123")
             conn.execute(
                 "INSERT INTO estudiantes (nombre, grado, rol, contrasena, creado_en) VALUES (?, ?, ?, ?, ?)",
-                ("Admin", 6, "profesor", "admin123", datetime.now().isoformat())
+                ("Admin", 6, "profesor", pass_admin, datetime.now().isoformat())
             )
             logger.info("Usuario Admin creado por defecto.")
 
@@ -179,10 +186,11 @@ def crear_o_recuperar_estudiante(nombre: str, grado: int, contrasena: str = None
                 )
 
             # No existe -> crear
+            pass_hash = _hashear_password(contrasena) if contrasena else _hashear_password("12345")
             cursor = conn.execute(
                 "INSERT INTO estudiantes (nombre, grado, contrasena, creado_en) VALUES (?, ?, ?, ?)",
-                (nombre, grado, contrasena, datetime.now().isoformat())
             )
+            (nombre, grado, pass_hash, datetime.now().isoformat())
             logger.info(f"Nuevo estudiante registrado: {nombre}")
             return Estudiante(id=cursor.lastrowid, nombre=nombre, grado=grado)
         except Exception as e:
@@ -192,10 +200,11 @@ def crear_o_recuperar_estudiante(nombre: str, grado: int, contrasena: str = None
 
 def verificar_usuario(nombre: str, grado: int, contrasena: str):
     """Valida credenciales para el login."""
+    pass_hash = _hashear_password(contrasena)
     with _conectar() as conn:
         fila = conn.execute(
             "SELECT * FROM estudiantes WHERE nombre = ? AND grado = ? AND contrasena = ?",
-            (nombre, grado, contrasena)
+            (nombre, grado, pass_hash)
         ).fetchone()
         
         if fila:
