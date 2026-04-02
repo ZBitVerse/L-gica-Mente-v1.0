@@ -188,12 +188,21 @@ def crear_o_recuperar_estudiante(nombre: str, grado: int, contrasena: str = None
 
             # No existe -> crear
             pass_hash = _hashear_password(contrasena) if contrasena else _hashear_password("12345")
-            cursor = conn.execute(
+            conn.execute(
                 "INSERT INTO estudiantes (nombre, grado, contrasena, creado_en) VALUES (?, ?, ?, ?)",
+                (nombre, grado, pass_hash, datetime.now().isoformat())
             )
-            (nombre, grado, pass_hash, datetime.now().isoformat())
             logger.info(f"Nuevo estudiante registrado: {nombre}")
-            return Estudiante(id=cursor.lastrowid, nombre=nombre, grado=grado)
+            
+            # Recuperar el ID recién creado
+            fila_nueva = conn.execute("SELECT * FROM estudiantes WHERE nombre = ? AND grado = ?", (nombre, grado)).fetchone()
+            return Estudiante(
+                id=fila_nueva["id"],
+                nombre=fila_nueva["nombre"],
+                grado=fila_nueva["grado"],
+                rol=fila_nueva["rol"],
+                creado_en=fila_nueva["creado_en"]
+            )
         except Exception as e:
             logger.error(f"Error en crear_o_recuperar_estudiante: {e}")
             raise

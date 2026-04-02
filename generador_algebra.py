@@ -21,6 +21,7 @@ AUTOR: Puente Lógico SAS BIC
 import random
 from dataclasses import dataclass, field
 from typing import Optional
+import streamlit as st
 import sympy as sp
 from config import CASOS_FACTORIZACION
 
@@ -300,6 +301,7 @@ _GENERADORES = {
 # Esta es la función que llama el resto de la aplicación.
 # ---------------------------------------------------------------------------
 
+@st.cache_resource(show_spinner="Generando reto matemático...")
 def generar_problema(
     caso_id:    Optional[str] = None,
     dificultad: int = 1

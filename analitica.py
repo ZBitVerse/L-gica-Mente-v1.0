@@ -18,6 +18,7 @@ Por qué separar la analítica del dashboard:
 import random
 from datetime import datetime, timedelta
 
+import streamlit as st
 import pandas as pd
 
 from config import CASOS_FACTORIZACION, GRADOS_COLOMBIA
@@ -136,6 +137,7 @@ def _generar_progreso_demo(n: int = 20) -> list[dict]:
 # FUNCIONES PÚBLICAS DE ANALÍTICA
 # ---------------------------------------------------------------------------
 
+@st.cache_data(ttl=600)  # Caché por 10 minutos para ahorrar procesamiento
 def cargar_resumen_clase(grado: int = None, demo: bool = False) -> pd.DataFrame:
     """
     Carga el resumen de todos los estudiantes con su nivel de riesgo.
@@ -183,6 +185,7 @@ def cargar_resumen_clase(grado: int = None, demo: bool = False) -> pd.DataFrame:
     return pd.DataFrame(filas)
 
 
+@st.cache_data(ttl=600)
 def cargar_rendimiento_casos(estudiante_id: int = None, demo: bool = False) -> pd.DataFrame:
     """
     Rendimiento por tipo de caso de factorización.
