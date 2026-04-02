@@ -85,6 +85,14 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
+# ── SEGURIDAD ─────────────────────────────────────────────────────────
+
+if not st.session_state.get("autenticado") or st.session_state.get("rol") != "profesor":
+    st.warning("🔒 Esta sección es exclusiva para profesores. Por favor, inicia sesión.")
+    if st.button("Ir al Inicio"):
+        st.switch_page("main.py")
+    st.stop()
+
 # ---------------------------------------------------------------------------
 # ENCABEZADO
 # ---------------------------------------------------------------------------
@@ -98,7 +106,7 @@ with col_tit:
     """)
 
 with col_modo:
-    modo_demo = st.toggle("Modo demo", value=True, help="Activa datos de ejemplo para explorar el dashboard")
+    modo_demo = st.toggle("Modo demo", value=False, help="Activa datos de ejemplo para explorar el dashboard")
 
 if modo_demo:
     st.info("📊 **Modo demo activo** — Estás viendo datos de ejemplo. Desactívalo para ver datos reales de tus estudiantes.")

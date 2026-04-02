@@ -49,6 +49,8 @@ def inicializar_db():
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             nombre      TEXT    NOT NULL,
             grado       INTEGER NOT NULL,
+            rol         TEXT    NOT NULL DEFAULT 'estudiante',
+            contrasena  TEXT,
             creado_en   TEXT    NOT NULL DEFAULT (datetime('now')),
             ultima_vez  TEXT
         );
@@ -62,7 +64,17 @@ def inicializar_db():
             puntos_sesion   INTEGER DEFAULT 0,
             racha_max       INTEGER DEFAULT 0
         );
+        """)
 
+        # Crear un profesor por defecto si la base de datos está vacía
+        count = conn.execute("SELECT COUNT(*) FROM estudiantes").fetchone()[0]
+        if count == 0:
+            conn.execute(
+                "INSERT INTO estudiantes (nombre, grado, rol, contrasena, creado_en) VALUES (?, ?, ?, ?, ?)",
+                ("Admin", 6, "profesor", "admin123", datetime.now().isoformat())
+            )
+
+        conn.executescript("""
         -- Tabla de respuestas (cada pregunta respondida)
         CREATE TABLE IF NOT EXISTS respuestas (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,6 +110,7 @@ class Estudiante:
     """
     nombre:     str
     grado:      int
+    rol:        str = "estudiante"
     id:         Optional[int] = None
     creado_en:  Optional[str] = None
     ultima_vez: Optional[str] = None
@@ -137,16 +150,10 @@ class Respuesta:
 # OPERACIONES CON ESTUDIANTES
 # ---------------------------------------------------------------------------
 
-def crear_o_recuperar_estudiante(nombre: str, grado: int) -> Estudiante:
+def crear_o_recuperar_estudiante(nombre: str, grado: int, contrasena: str = None) -> Estudiante:
     """
-    Busca un estudiante por nombre y grado.
-    Si no existe, lo crea.
-
-    Por qué esta estrategia: simplifica el flujo del juego — el estudiante
-    no necesita recordar contraseñas ni IDs, solo su nombre y grado.
-
-    Retorna:
-        Estudiante con su id asignado.
+    Busca o crea un estudiante. Ahora soporta contraseña opcional.
+    Para el MVP, si no se envía contraseña, se asocia una por defecto.
     """
     with _conectar() as conn:
         fila = conn.execute(
@@ -159,17 +166,33 @@ def crear_o_recuperar_estudiante(nombre: str, grado: int) -> Estudiante:
                 id=fila["id"],
                 nombre=fila["nombre"],
                 grado=fila["grado"],
+                rol=fila["rol"],
                 creado_en=fila["creado_en"],
                 ultima_vez=fila["ultima_vez"],
             )
 
-        # No existe → crear
+        # No existe -> crear
         cursor = conn.execute(
-            "INSERT INTO estudiantes (nombre, grado, creado_en) VALUES (?, ?, ?)",
-            (nombre, grado, datetime.now().isoformat())
+            "INSERT INTO estudiantes (nombre, grado, contrasena, creado_en) VALUES (?, ?, ?, ?)",
+            (nombre, grado, contrasena, datetime.now().isoformat())
         )
         return Estudiante(id=cursor.lastrowid, nombre=nombre, grado=grado)
 
+
+def verificar_usuario(nombre: str, grado: int, contrasena: str):
+    """Valida credenciales para el login."""
+    with _conectar() as conn:
+        fila = conn.execute(
+            "SELECT * FROM estudiantes WHERE nombre = ? AND grado = ? AND contrasena = ?",
+            (nombre, grado, contrasena)
+        ).fetchone()
+        
+        if fila:
+            return Estudiante(
+                id=fila["id"], nombre=fila["nombre"], grado=fila["grado"], rol=fila["rol"],
+                creado_en=fila["creado_en"], ultima_vez=fila["ultima_vez"]
+            )
+        return None
 
 def listar_estudiantes(grado: Optional[int] = None) -> list[Estudiante]:
     """
@@ -191,7 +214,7 @@ def listar_estudiantes(grado: Optional[int] = None) -> list[Estudiante]:
 
         return [
             Estudiante(
-                id=f["id"], nombre=f["nombre"], grado=f["grado"],
+                id=f["id"], nombre=f["nombre"], grado=f["grado"], rol=f["rol"],
                 creado_en=f["creado_en"], ultima_vez=f["ultima_vez"]
             )
             for f in filas

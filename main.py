@@ -17,6 +17,10 @@ from generador_algebra import (
     generar_problema, validar_respuesta,
     generar_pistas, generar_pasos_solucion,
 )
+from estudiantes import (
+    crear_o_recuperar_estudiante, iniciar_sesion, 
+    guardar_respuesta, cerrar_sesion, Respuesta
+)
 
 # ---------------------------------------------------------------------------
 # CONFIGURACIÓN DE PÁGINA
@@ -380,6 +384,18 @@ hr { border-color: rgba(255,255,255,0.1) !important; }
     text-align: center;
     margin: -8px 0 10px;
 }
+
+/* Secciones de la Landing */
+.landing-section {
+    padding: 60px 0;
+    color: white;
+}
+.section-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: #F39C12;
+    margin-bottom: 20px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -392,6 +408,10 @@ def _init_estado():
     defaults = {
         "pantalla":             "bienvenida",
         "nombre":               "",
+        "autenticado":          False,
+        "rol":                  "estudiante",
+        "estudiante_id":        None,
+        "sesion_id":            None,
         "grado":                8,
         "problema":             None,
         "pistas_obj":           None,
@@ -481,6 +501,24 @@ def _procesar_respuesta(respuesta: str, problema):
     else:
         st.session_state.racha = 0
 
+    # Guardar en Base de Datos
+    if st.session_state.sesion_id:
+        reg_resp = Respuesta(
+            sesion_id=st.session_state.sesion_id,
+            estudiante_id=st.session_state.estudiante_id,
+            caso_id=problema.caso_id,
+            expresion=problema.expresion_str,
+            fue_correcta=res["correcto"],
+            respuesta_dada=respuesta,
+            pistas_usadas=st.session_state.pistas_usadas,
+            tiempo_segundos=round(tiempo, 2),
+            puntos_ganados=pts
+        )
+        guardar_respuesta(reg_resp)
+
+    if not res["correcto"]:
+        st.session_state.racha = 0
+
     st.session_state.puntos               += pts
     st.session_state.ejercicios_resueltos += 1
     st.session_state.ya_respondio          = True
@@ -492,47 +530,109 @@ def _procesar_respuesta(respuesta: str, problema):
 # ---------------------------------------------------------------------------
 
 def pantalla_bienvenida():
-    # Hero
+    # ── HERO SECTION ─────────────────────────────────────────────────────
     st.markdown("""
     <div class="hero">
         <div class="hero-logo">🧮</div>
         <h1>Puente Lógico</h1>
-        <p>Domina la factorización algebraica jugando</p>
+        <p style="font-size: 1.4rem; color: #f7c948;">Transformando el miedo a las matemáticas en éxito escolar</p>
+        <p style="max-width: 700px; margin: 20px auto; opacity: 0.8;">
+            Una plataforma interactiva diseñada para reducir la deserción escolar en Colombia 
+            mediante el dominio de la factorización y el álgebra.
+        </p>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # Formulario centrado
-    _, col, _ = st.columns([1, 2, 1])
+    # ── LOGIN / REGISTRO ────────────────────────────────────────────────
+    _, col, _ = st.columns([1, 1.5, 1])
     with col:
         st.markdown('<div class="glass">', unsafe_allow_html=True)
+        tab1, tab2 = st.tabs(["🔑 Iniciar Sesión", "✨ Registrarse"])
+        
+        with tab1:
+            l_nombre = st.text_input("Nombre de usuario", key="l_user")
+            l_grado  = st.selectbox("Grado", list(GRADOS_COLOMBIA.keys()), key="l_grade")
+            l_pass   = st.text_input("Contraseña", type="password", key="l_pass")
+            if st.button("Entrar a jugar", type="primary", use_container_width=True):
+                from estudiantes import verificar_usuario
+                u = verificar_usuario(l_nombre, l_grado, l_pass)
+                if u:
+                    ses = iniciar_sesion(u.id)
+                    st.session_state.nombre = u.nombre
+                    st.session_state.estudiante_id = u.id
+                    st.session_state.sesion_id = ses.id
+                    st.session_state.grado = u.grado
+                    st.session_state.rol = u.rol
+                    st.session_state.autenticado = True
+                    
+                    if u.rol == "profesor":
+                        st.success("¡Bienvenido, Profesor! Redirigiendo...")
+                        time.sleep(1)
+                        st.switch_page("pages/01_profesor.py")
+                    else:
+                        st.session_state.pantalla = "juego"
+                        _nuevo_problema()
+                    st.rerun()
+                else:
+                    st.error("Credenciales incorrectas")
 
-        nombre = st.text_input("Tu nombre", placeholder="¿Cómo te llamas?", max_chars=40)
-
-        grado = st.selectbox(
-            "¿En qué grado estás?",
-            options=list(GRADOS_COLOMBIA.keys()),
-            format_func=lambda g: f"Grado {GRADOS_COLOMBIA[g]['nombre']}  ·  {GRADOS_COLOMBIA[g]['edad_tipica']} años",
-            index=2,
-        )
-
-        if grado < GRADO_INICIO_RECOMENDADO:
-            st.warning("Este juego es para grado 7° en adelante — ¡pero puedes intentarlo!")
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        if st.button("🚀  ¡Empezar a jugar!", type="primary"):
-            if nombre.strip():
-                st.session_state.nombre   = nombre.strip()
-                st.session_state.grado    = grado
-                st.session_state.pantalla = "juego"
-                _nuevo_problema()
-                st.rerun()
-            else:
-                st.error("Escribe tu nombre para continuar.")
+        with tab2:
+            r_nombre = st.text_input("¿Cómo quieres llamarte?", key="r_user")
+            r_grado  = st.selectbox("Grado escolar", list(GRADOS_COLOMBIA.keys()), key="r_grade", index=2)
+            r_pass   = st.text_input("Crea una contraseña", type="password", key="r_pass")
+            if st.button("Crear mi cuenta", use_container_width=True):
+                if r_nombre and r_pass:
+                    u = crear_o_recuperar_estudiante(r_nombre, r_grado, r_pass)
+                    st.success("¡Cuenta creada! Ahora inicia sesión.")
+                else:
+                    st.warning("Completa todos los campos")
 
         st.markdown('</div>', unsafe_allow_html=True)
+
+    # ── SECCIÓN: EL PROBLEMA ─────────────────────────────────────────────
+    st.markdown("""
+    <div class="landing-section" style="text-align:center;">
+        <h2 class="section-title">¿Por qué Puente Lógico?</h2>
+        <div style="display:flex; justify-content:center; gap:30px; flex-wrap:wrap;">
+            <div class="glass" style="width:300px;">
+                <h3>📉 5%</h3>
+                <p>Tasa de deserción escolar en secundaria en Colombia.</p>
+            </div>
+            <div class="glass" style="width:300px;">
+                <h3>✖️ Álgebra</h3>
+                <p>La principal barrera académica que causa frustración y abandono.</p>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── SECCIÓN: CARACTERÍSTICAS ─────────────────────────────────────────
+    st.markdown('<h2 class="section-title" style="text-align:center;">Nuestra Tecnología</h2>', unsafe_allow_html=True)
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.markdown("""
+        <div class="caso-card">
+            <div class="emoji">🧠</div>
+            <h4>Motor Algebraico</h4>
+            <p style="font-size:0.8rem; opacity:0.7;">Validación real con SymPy. No comparamos texto, entendemos matemáticas.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with c2:
+        st.markdown("""
+        <div class="caso-card">
+            <div class="emoji">🚨</div>
+            <h4>Motor de Riesgo</h4>
+            <p style="font-size:0.8rem; opacity:0.7;">Alertas tempranas para profesores basadas en patrones de comportamiento.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with c3:
+        st.markdown("""
+        <div class="caso-card">
+            <div class="emoji">🎮</div>
+            <h4>Gamificación</h4>
+            <p style="font-size:0.8rem; opacity:0.7;">Niveles, rachas y puntos para mantener el compromiso del estudiante.</p>
+        </div>
+        """, unsafe_allow_html=True)
 
     # Cards de casos
     st.markdown("<br>", unsafe_allow_html=True)
@@ -749,6 +849,12 @@ def pantalla_juego():
                 st.rerun()
         with c2:
             if st.button("🏁 Terminar"):
+                if st.session_state.sesion_id:
+                    cerrar_sesion(
+                        st.session_state.sesion_id, 
+                        st.session_state.puntos, 
+                        st.session_state.racha_max
+                    )
                 st.session_state.pantalla = "resultado"
                 st.rerun()
 

@@ -376,7 +376,7 @@ def identificar_caso(expresion_str: str) -> Optional[str]:
     # Obtenemos el polinomio en x
     try:
         poly   = sp.Poly(expr_expandida, x)
-        grado  = poly.degree()
+        grado  = int(poly.degree())
         coefs  = poly.all_coeffs()  # De mayor a menor grado
     except Exception:
         return None
