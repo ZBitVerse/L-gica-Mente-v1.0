@@ -355,7 +355,7 @@ html, body, .stApp {
 
 /* ── Inputs y botones ── */
 .stTextInput > div > div > input {
-    background: rgba(255,255,255,0.1) !important;
+    background: rgba(0, 0, 0, 0.4) !important; /* Fondo oscuro para máximo contraste */
     border: 2px solid rgba(255,255,255,0.2) !important;
     border-radius: 12px !important;
     color: white !important;
@@ -391,9 +391,12 @@ div.stButton > button[kind="primary"] {
     font-weight: 600 !important;
 }
 div[data-baseweb="select"] > div {
-    background: rgba(255,255,255,0.1) !important;
+    background: rgba(0, 0, 0, 0.4) !important; /* Fondo oscuro para máximo contraste */
     border: 2px solid rgba(255,255,255,0.2) !important;
     border-radius: 12px !important;
+}
+/* Asegura que el texto seleccionado sea visible */
+div[data-baseweb="select"] div {
     color: white !important;
 }
 
