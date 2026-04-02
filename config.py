@@ -194,10 +194,10 @@ RIESGO_DESERCION = {
 # Paleta inspirada en los colores de Colombia + modernidad EdTech
 # ---------------------------------------------------------------------------
 COLORES = {
-    "primario":    "#1B4F72",  # Azul oscuro — confianza, institución
-    "secundario":  "#F39C12",  # Amarillo dorado — energía, matemáticas
-    "acento":      "#27AE60",  # Verde — éxito, correcto
-    "error":       "#E74C3C",  # Rojo — incorrecto, alerta
+    "primario":    "#007AFF",  # Azul Eléctrico (Apple Style) — Acción y tecnología
+    "secundario":  "#FFD700",  # Dorado Sunlight — Claridad y logros
+    "acento":      "#34C759",  # Verde Esmeralda — Éxito vibrante
+    "error":       "#FF3B30",  # Rojo Coral — Alerta clara
     "neutro":      "#ECF0F1",  # Gris claro — fondos
     "texto":       "#2C3E50",  # Azul oscuro — texto principal
 }

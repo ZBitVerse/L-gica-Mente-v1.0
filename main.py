@@ -45,13 +45,13 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
 
 :root {
-    --primary: #1B4F72;
-    --accent: #F39C12;
-    --success: #27AE60;
-    --error: #E74C3C;
+    --primary: #007AFF;
+    --accent: #FFD700;
+    --success: #34C759;
+    --error: #FF3B30;
     --glass: rgba(255, 255, 255, 0.08);
     --glass-border: rgba(255, 255, 255, 0.15);
-    --grad-dark: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    --grad-dark: linear-gradient(180deg, #000000, #0F172A, #1E293B);
 }
 
 /* ── Reset y base ── */
@@ -101,7 +101,7 @@ html, body, .stApp {
 .hero h1 {
     font-size: 3.5rem;
     font-weight: 900;
-    background: linear-gradient(90deg, #F39C12, #f7c948, #F39C12);
+    background: linear-gradient(180deg, #FFFFFF 0%, #FFD700 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     margin: 8px 0 4px;
@@ -119,7 +119,7 @@ html, body, .stApp {
     -webkit-backdrop-filter: blur(16px); /* Para compatibilidad con Safari */
     border: 1px solid var(--glass-border);
     border-radius: 20px;
-    padding: 28px;
+    padding: 32px;
     margin: 12px 0;
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); /* Sombra más pronunciada */
     transition: border 0.3s ease; /* Transición suave para el borde */
